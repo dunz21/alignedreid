@@ -4,7 +4,9 @@ log/
 saved-models/
 train_imagenet.py
 .idea/
-
+Alignedreid_models
+people*
+checkpoint*
 # OS X
 .DS_Store
 .Spotlight-V100

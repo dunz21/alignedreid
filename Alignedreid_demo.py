@@ -10,7 +10,8 @@ from sklearn.preprocessing import normalize
 def pool2d(tensor, type= 'max'):
     sz = tensor.size()
     if type == 'max':
-        x = torch.nn.functional.max_pool2d(tensor, kernel_size=(sz[2]/8, sz[3]))
+        # x = torch.nn.functional.max_pool2d(tensor, kernel_size=(sz[2]/8, sz[3]))
+        x = torch.nn.functional.max_pool2d(tensor, kernel_size=(int(sz[2]/8), int(sz[3])))
     if type == 'mean':
         x = torch.nn.functional.mean_pool2d(tensor, kernel_size=(sz[2]/8, sz[3]))
     x = x[0].cpu().data.numpy()
@@ -21,7 +22,7 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = "0"
     use_gpu = torch.cuda.is_available()
     model = models.init_model(name='resnet50', num_classes=751, loss={'softmax', 'metric'}, use_gpu=use_gpu,aligned=True)
-    checkpoint = torch.load("./log/market1501/alignedreid/checkpoint_ep300.pth.tar")
+    checkpoint = torch.load("checkpoint_ep300.pth.tar",map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['state_dict'])
 
     img_transform = transforms.Compose([
@@ -32,8 +33,8 @@ if __name__ == '__main__':
 
     exact_list = ['7']
     myexactor = FeatureExtractor(model, exact_list)
-    img_path1 = './data/market1501/query/0001_c1s1_001051_00.jpg'
-    img_path2 = './data/market1501/query/0001_c2s1_000301_00.jpg'
+    img_path1 = './people_2/img_3_20.png'
+    img_path2 = './people_2/img_3_580.png'
     img1 = read_image(img_path1)
     img2 = read_image(img_path2)
     img1 = img_to_tensor(img1, img_transform)
@@ -45,8 +46,9 @@ if __name__ == '__main__':
     model.eval()
     f1 = myexactor(img1)
     f2 = myexactor(img2)
-    a1 = normalize(pool2d(f1[0], type='max'))
+    a1 = normalize(pool2d(f1[0], type='max')) # [1,2048,8,4] -> [1,2048,8,1] -> [1,8,2048] -> [8,2048] = a1 
     a2 = normalize(pool2d(f2[0], type='max'))
+    # Al final termina comparando por cada 8 el arreglo de 2048 (numero de canales)
     dist = np.zeros((8,8))
     for i in range(8):
         temp_feat1 = a1[i]
