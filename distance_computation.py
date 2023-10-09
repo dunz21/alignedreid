@@ -6,6 +6,9 @@ from PIL import Image
 import torchvision.transforms as transforms
 import models
 from util.distance import low_memory_local_dist
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+import os
 
 def remove_fc(state_dict):
     """Remove the fc layer parameters from state_dict."""
@@ -22,6 +25,7 @@ def load_model(model_path, arch='resnet50'):
     model.eval()
     return model
 
+# [1,3,256,128]
 def preprocess_image(img_path):
     transform = transforms.Compose([
         transforms.Resize((256, 128)),
@@ -62,6 +66,50 @@ def compute_distance(model, img_path1, img_path2, distance_type='global'):
         else:
             raise ValueError("Invalid distance_type. Choose from 'global', 'local', or 'global_local'.")
 
+
+
+def plot_pca(images, model, preprocess_image):
+    """
+    Plots the output of a model on images in 2D using PCA.
+    
+    Parameters:
+    - images: List of images.
+    - model: A model that will extract features.
+    - preprocess_image: A function to preprocess images before passing to the model.
+    """
+    
+    # Extract image names from paths
+    image_names = [os.path.splitext(os.path.basename(img_path))[0] for img_path in images]
+    
+    # Extract features
+    features_list = []
+    for img in images:
+        img = preprocess_image(img)
+        with torch.no_grad():
+            features, _ = model(img)
+        features_list.append(features)
+    
+    # Concatenate features using torch.cat
+    features_tensor = torch.cat(features_list, dim=0)
+    
+    # Convert tensor to numpy array
+    features_array = features_tensor.cpu().numpy()
+    
+    # Apply PCA
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(features_array)
+    
+    # Plotting
+    plt.figure(figsize=(10, 8))
+    for i, (x, y) in enumerate(pca_result):
+        plt.scatter(x, y, label=image_names[i])
+    
+    plt.legend()
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.title('PCA of Model AlignedReId')
+    plt.show()
+
 if __name__ == "__main__":
     model_path = "Alignedreid_models/Cuhk03_Resnet50_Alignedreid/checkpoint_ep300.pth.tar" #FUNCIONA
     # model_path = "Alignedreid_models/Cuhk03_Resnet50_Alignedreid(LS)/checkpoint_ep300.pth.tar"
@@ -76,7 +124,22 @@ if __name__ == "__main__":
     distance_type = 'local'  # Choose from 'global', 'local', or 'global_local'.
 
     model = load_model(model_path)
-    distance = compute_distance(model, img1_path, img2_path,distance_type)
-    print("Squared Euclidean Distance between images:", distance)
+    # distance = compute_distance(model, img1_path, img2_path,distance_type)
+    images_list = [
+        './people_2/img_3_20.png',
+        './people_2/img_3_580.png',
+        './people_2/img_3_40.png',
+        './people_2/img_3_60.png',
+        './people_2/img_5_20.png',
+        './people_2/img_5_40.png',
+        './people_2/img_5_60.png',
+        './people_2/img_5_80.png',
+        './people_2/img_9_20.png',
+        './people_2/img_9_40.png',
+        './people_2/img_9_60.png',
+        './people_2/img_9_80.png',
+        ]
+    plot_pca(images_list,model,preprocess_image)
+    # print("Squared Euclidean Distance between images:", distance)
 
 
